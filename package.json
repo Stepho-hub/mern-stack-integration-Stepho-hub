@@ -1,0 +1,30 @@
+{
+  "name": "mern-blog-application",
+  "version": "1.0.0",
+  "description": "Full-stack MERN blog application with modern UI and comprehensive features",
+  "main": "server/server.js",
+  "scripts": {
+    "dev": "concurrently \"cd server && npm run dev\" \"cd client && npm run dev\"",
+    "build": "cd client && npm install && npm run build && cd ../server && npm install",
+    "start": "cd server && NODE_ENV=production npm start",
+    "install-server": "cd server && npm install",
+    "install-client": "cd client && npm install"
+  },
+  "keywords": [
+    "mern",
+    "blog",
+    "react",
+    "express",
+    "mongodb",
+    "typescript"
+  ],
+  "author": "Somtech Productions",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}
