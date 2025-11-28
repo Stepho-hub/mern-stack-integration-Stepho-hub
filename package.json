@@ -8,7 +8,11 @@
     "build": "cd client && npm install && npm run build && cd ../server && npm install",
     "start": "cd server && NODE_ENV=production npm start",
     "install-server": "cd server && npm install",
-    "install-client": "cd client && npm install"
+    "install-client": "cd client && npm install",
+    "render-build": "npm run build",
+    "render-start": "npm run start",
+    "vercel-build": "cd client && npm install && npm run build",
+    "vercel-start": "cd client && npm run preview"
   },
   "keywords": [
     "mern",

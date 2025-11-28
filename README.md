@@ -18,7 +18,7 @@ A full-stack MERN (MongoDB, Express.js, React.js, Node.js) blog application with
 - **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui
 - **Backend**: Node.js, Express.js, MongoDB, Mongoose
 - **Authentication**: JWT (JSON Web Tokens)
-- **Deployment**: Railway
+- **Deployment**: Railway, Render, Vercel
 
 ## 📁 Project Structure
 
@@ -38,7 +38,10 @@ mern-blog-engine-main/
 │   ├── routes/             # API routes
 │   ├── middleware/         # Custom middleware
 │   └── uploads/            # Uploaded files
-└── railway.json           # Railway deployment config
+├── railway.json           # Railway deployment config
+├── render.yaml            # Render deployment config
+├── vercel.json            # Vercel deployment config
+└── package.json           # Root package.json for deployments
 ```
 
 ## 🚀 Local Development
@@ -97,50 +100,98 @@ mern-blog-engine-main/
 
 ## 🚀 Production Deployment
 
-### Option 1: Railway (Recommended)
+Choose from three deployment platforms:
+
+### Option 1: Railway (Full-Stack - Recommended)
 
 1. **Create Railway Account**
-
    - Sign up at [railway.app](https://railway.app)
 
 2. **Connect Repository**
-
    - Link your GitHub repository to Railway
-   - Railway will automatically detect the configuration
+   - Railway automatically detects `railway.json` configuration
 
-3. **Database Setup**
-
-   - Railway provides MongoDB automatically
-   - Or connect your MongoDB Atlas database
-
-4. **Environment Variables**
-   Railway will use these environment variables:
-
+3. **Environment Variables**
+   Add these in Railway dashboard:
    ```
-   DATABASE_URL=<railway-provided-mongodb-url>
-   JWT_SECRET=your-secure-jwt-secret
+   DATABASE_URL=mongodb+srv://your-mongodb-connection-string
+   JWT_SECRET=your-secure-jwt-secret-here
    NODE_ENV=production
-   PORT=<railway-provided-port>
    ```
 
-5. **Deploy**
-   - Push to main branch to trigger automatic deployment
-   - Railway will build and deploy both client and server
+4. **Deploy**
+   - Push to main branch triggers automatic deployment
+   - Railway builds and deploys both frontend and backend
 
-### Option 2: Manual Deployment
+### Option 2: Render (Full-Stack)
 
-1. **Build the client**
+1. **Create Render Account**
+   - Sign up at [render.com](https://render.com)
 
-   ```bash
-   cd client
-   npm run build
+2. **Connect Repository**
+   - Create new "Web Service" from Git
+   - Connect your GitHub repository
+   - Render detects `render.yaml` configuration
+
+3. **Environment Variables**
+   Add these in Render dashboard:
+   ```
+   DATABASE_URL=mongodb+srv://your-mongodb-connection-string
+   JWT_SECRET=your-secure-jwt-secret-here
+   NODE_ENV=production
    ```
 
-2. **Deploy server** to your preferred platform (Heroku, DigitalOcean, etc.)
-   ```bash
-   cd server
-   npm start
+4. **Deploy**
+   - Render automatically builds and deploys
+   - Both frontend and backend served from single service
+
+### Option 3: Vercel + Render (Frontend + Backend)
+
+#### Frontend on Vercel:
+1. **Create Vercel Account**
+   - Sign up at [vercel.com](https://vercel.com)
+
+2. **Connect Repository**
+   - Import your GitHub repository
+   - Vercel detects `vercel.json` configuration
+
+3. **Environment Variables**
+   Add in Vercel dashboard:
    ```
+   VITE_API_URL=https://your-render-backend-url.onrender.com/api
+   ```
+
+4. **Deploy**
+   - Vercel builds and deploys the React frontend
+   - Automatically connects to your Render backend
+
+#### Backend on Render:
+1. **Deploy backend separately** using Option 2 above
+2. **Note the Render URL** (e.g., `https://your-app.onrender.com`)
+3. **Update Vercel** with the backend URL
+
+### Environment Variables Summary
+
+**Backend (Railway/Render):**
+```
+DATABASE_URL=mongodb+srv://your-mongodb-connection-string
+JWT_SECRET=your-secure-jwt-secret-here
+NODE_ENV=production
+```
+
+**Frontend (Vercel only):**
+```
+VITE_API_URL=https://your-backend-url/api
+```
+
+### Database Setup
+
+**MongoDB Atlas (Recommended for all platforms):**
+1. Create account at [mongodb.com/atlas](https://mongodb.com/atlas)
+2. Create free cluster
+3. Create database user
+4. Get connection string
+5. Whitelist IP: `0.0.0.0/0` for cloud deployments
 
 ## 📡 API Endpoints
 
