@@ -3,12 +3,22 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { postService } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import Navigation from '@/components/Navigation';
 import { format } from 'date-fns';
 import { ArrowLeft, Edit, Trash, Send } from 'lucide-react';
 import { toast } from 'sonner';
+
+interface Comment {
+  _id: string;
+  user: {
+    _id: string;
+    name: string;
+  };
+  content: string;
+  createdAt: string;
+}
 
 interface Post {
   _id: string;
@@ -23,17 +33,7 @@ interface Post {
   category: {
     name: string;
   } | null;
-}
-
-interface Comment {
-  _id: string;
-  user?: {
-    _id: string;
-    name: string;
-  };
-  name?: string;
-  content: string;
-  createdAt: string;
+  comments: Comment[];
 }
 
 const PostDetail = () => {
@@ -41,10 +41,8 @@ const PostDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [post, setPost] = useState<Post | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState('');
-  const [commentName, setCommentName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [commentContent, setCommentContent] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
 
   useEffect(() => {
@@ -53,55 +51,16 @@ const PostDetail = () => {
     }
   }, [slug]);
 
-  const fetchComments = async (postId: string) => {
-    try {
-      const response = await postService.getComments(postId);
-      setComments(response.data || []);
-    } catch (error) {
-      console.error('Error fetching comments:', error);
-    }
-  };
-
   const fetchPost = async () => {
     try {
       const data = await postService.getPost(slug!);
       setPost(data);
-      // Also fetch comments for this post
-      await fetchComments(data._id);
     } catch (error) {
       console.error('Error fetching post:', error);
       toast.error('Post not found');
       navigate('/');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleSubmitComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim() || !post) return;
-
-    if (!user && !commentName.trim()) {
-      toast.error('Name is required for anonymous comments');
-      return;
-    }
-
-    setSubmittingComment(true);
-    try {
-      const commentData: any = { content: newComment.trim() };
-      if (!user) {
-        commentData.name = commentName.trim();
-      }
-      await postService.addComment(post._id, commentData);
-      await fetchComments(post._id);
-      setNewComment('');
-      setCommentName('');
-      toast.success('Comment added successfully');
-    } catch (error: any) {
-      console.error('Error adding comment:', error);
-      toast.error(error.response?.data?.error || 'Failed to add comment');
-    } finally {
-      setSubmittingComment(false);
     }
   };
 
@@ -118,6 +77,25 @@ const PostDetail = () => {
     }
   };
 
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentContent.trim()) return;
+
+    setSubmittingComment(true);
+    try {
+      await postService.addComment(post!._id, { content: commentContent });
+      setCommentContent('');
+      // Refresh post to get updated comments
+      await fetchPost();
+      toast.success('Comment added successfully');
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast.error('Failed to add comment');
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -131,15 +109,13 @@ const PostDetail = () => {
     return null;
   }
 
-  const isAuthor = user?.id === post.author?._id;
-
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      
+
       <main className="container mx-auto px-4 py-12 max-w-4xl">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           className="mb-6"
           onClick={() => navigate('/')}
         >
@@ -147,15 +123,15 @@ const PostDetail = () => {
           Back to posts
         </Button>
 
-        {post.featuredImage && (
-          <div className="aspect-video w-full overflow-hidden rounded-lg mb-8">
-            <img
-              src={post.featuredImage}
-              alt={post.title}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
+        <div className="aspect-video w-full overflow-hidden rounded-lg mb-8 border-2 border-border shadow-lg">
+          <img
+            src={post.featuredImage ? (
+              post.featuredImage.startsWith('http') ? post.featuredImage : `/uploads/${post.featuredImage}`
+            ) : '/placeholder.svg'}
+            alt={post.title}
+            className="w-full h-full object-cover"
+          />
+        </div>
 
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -167,7 +143,7 @@ const PostDetail = () => {
             </span>
           </div>
 
-          {isAuthor && (
+          {user && (
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -194,11 +170,11 @@ const PostDetail = () => {
         <div className="flex items-center gap-3 mb-8 pb-8 border-b">
           <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
             <span className="text-lg font-semibold text-primary">
-              {post.author?.name ? post.author.name[0].toUpperCase() : 'A'}
+              {post.author.name[0].toUpperCase()}
             </span>
           </div>
           <div>
-            <p className="font-medium">By {post.author?.name || 'Anonymous'}</p>
+            <p className="font-medium">By {post.author.name}</p>
           </div>
         </div>
 
@@ -209,67 +185,52 @@ const PostDetail = () => {
 
         {/* Comments Section */}
         <div className="mt-12 pt-8 border-t">
-          <h3 className="text-2xl font-bold mb-6">Comments ({comments.length})</h3>
+          <h2 className="text-2xl font-bold mb-6">Comments ({post.comments.length})</h2>
 
-          {/* Add Comment Form */}
-          <form onSubmit={handleSubmitComment} className="mb-8">
-            {!user && (
-              <div className="mb-3">
-                <Input
-                  value={commentName}
-                  onChange={(e) => setCommentName(e.target.value)}
-                  placeholder="Your name..."
-                  className="max-w-xs"
-                  maxLength={100}
+          {user ? (
+            <form onSubmit={handleAddComment} className="mb-8">
+              <div className="space-y-4">
+                <Textarea
+                  placeholder="Write a comment..."
+                  value={commentContent}
+                  onChange={(e) => setCommentContent(e.target.value)}
+                  rows={3}
+                  required
                 />
+                <Button type="submit" disabled={submittingComment}>
+                  <Send className="h-4 w-4 mr-2" />
+                  {submittingComment ? 'Posting...' : 'Post Comment'}
+                </Button>
               </div>
-            )}
-            <div className="flex gap-3">
-              <Input
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Write a comment..."
-                className="flex-1"
-                maxLength={500}
-              />
-              <Button
-                type="submit"
-                disabled={submittingComment || !newComment.trim() || (!user && !commentName.trim())}
-                className="flex items-center gap-2"
-              >
-                <Send className="h-4 w-4" />
-                {submittingComment ? 'Posting...' : 'Post'}
-              </Button>
+            </form>
+          ) : (
+            <div className="mb-8 p-4 bg-muted rounded-lg text-center">
+              <p className="text-muted-foreground">Please sign in to leave a comment.</p>
             </div>
-          </form>
+          )}
 
-          {/* Comments List */}
           <div className="space-y-6">
-            {comments.length === 0 ? (
+            {post.comments.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">No comments yet. Be the first to comment!</p>
             ) : (
-              comments.map((comment) => {
-                const displayName = comment.user?.name || comment.name || 'Anonymous';
-                const displayInitial = displayName[0].toUpperCase();
-                return (
-                  <div key={comment._id} className="flex gap-4 p-4 bg-muted/50 rounded-lg">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-semibold text-primary">
-                        {displayInitial}
+              post.comments.map((comment) => (
+                <div key={comment._id} className="flex gap-4 p-4 bg-muted/50 rounded-lg">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-semibold text-primary">
+                      {comment.user?.name ? comment.user.name[0].toUpperCase() : '?'}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-medium">{comment.user?.name || 'Anonymous'}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(comment.createdAt), 'MMM dd, yyyy \'at\' HH:mm')}
                       </span>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-medium">{displayName}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(comment.createdAt), 'MMM dd, yyyy \'at\' h:mm a')}
-                        </span>
-                      </div>
-                      <p className="text-sm">{comment.content}</p>
-                    </div>
+                    <p className="text-sm">{comment.content}</p>
                   </div>
-                );
-              })
+                </div>
+              ))
             )}
           </div>
         </div>

@@ -1,100 +1,245 @@
-# MERN Stack Integration Assignment
+# MERN Blog Application
 
-This assignment focuses on building a full-stack MERN (MongoDB, Express.js, React.js, Node.js) application that demonstrates seamless integration between front-end and back-end components.
+A full-stack MERN (MongoDB, Express.js, React.js, Node.js) blog application with modern UI, dark/light theme support, and comprehensive CRUD operations.
 
-## Assignment Overview
+## 🚀 Features
 
-You will build a blog application with the following features:
-1. RESTful API with Express.js and MongoDB
-2. React front-end with component architecture
-3. Full CRUD functionality for blog posts
-4. User authentication and authorization
-5. Advanced features like image uploads and comments
+- **Blog Management**: Create, read, update, and delete blog posts
+- **User Authentication**: JWT-based registration and login
+- **Categories**: Organize posts by categories
+- **Comments System**: Interactive comments on blog posts
+- **Image Uploads**: Featured images for posts
+- **Dark/Light Theme**: Toggle between themes with smooth animations
+- **Responsive Design**: Mobile-friendly interface
+- **Modern UI**: Built with Tailwind CSS and shadcn/ui components
 
-## Project Structure
+## 🛠️ Tech Stack
+
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui
+- **Backend**: Node.js, Express.js, MongoDB, Mongoose
+- **Authentication**: JWT (JSON Web Tokens)
+- **Deployment**: Railway
+
+## 📁 Project Structure
 
 ```
-mern-blog/
-├── client/                 # React front-end
-│   ├── public/             # Static files
-│   ├── src/                # React source code
-│   │   ├── components/     # Reusable components
+mern-blog-engine-main/
+├── client/                 # React frontend
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
 │   │   ├── pages/          # Page components
-│   │   ├── hooks/          # Custom React hooks
-│   │   ├── services/       # API services
-│   │   ├── context/        # React context providers
-│   │   └── App.jsx         # Main application component
-│   └── package.json        # Client dependencies
-├── server/                 # Express.js back-end
-│   ├── config/             # Configuration files
-│   ├── controllers/        # Route controllers
+│   │   ├── contexts/       # React contexts
+│   │   ├── hooks/          # Custom hooks
+│   │   └── services/       # API services
+│   ├── public/             # Static assets
+│   └── dist/               # Built files (generated)
+├── server/                 # Express backend
 │   ├── models/             # Mongoose models
 │   ├── routes/             # API routes
 │   ├── middleware/         # Custom middleware
-│   ├── utils/              # Utility functions
-│   ├── server.js           # Main server file
-│   └── package.json        # Server dependencies
-└── README.md               # Project documentation
+│   └── uploads/            # Uploaded files
+└── railway.json           # Railway deployment config
 ```
 
-## Getting Started
+## 🚀 Local Development
 
-1. Accept the GitHub Classroom assignment invitation
-2. Clone your personal repository that was created by GitHub Classroom
-3. Install server dependencies:
+### Prerequisites
+
+- Node.js (v18+)
+- MongoDB (local or Atlas)
+- Git
+
+### Setup Instructions
+
+1. **Clone the repository**
+
+   ```bash
+   git clone <repository-url>
+   cd mern-blog-engine-main
    ```
+
+2. **Install server dependencies**
+
+   ```bash
    cd server
    npm install
    ```
-4. Install client dependencies:
-   ```
-   cd client
+
+3. **Install client dependencies**
+
+   ```bash
+   cd ../client
    npm install
+   cd ..
    ```
-5. Set up environment variables:
-   - Copy `server/.env.example` to `server/.env` and update the values
-   - Copy `client/.env.example` to `client/.env` if needed
-6. Start MongoDB (ensure it's running on localhost:27017)
-7. Start the development servers:
-   ```
-   # In the server directory
+
+4. **Environment Setup**
+
+   - Copy `server/.env.example` to `server/.env`
+   - Update MongoDB connection string and JWT secret
+   - Copy `client/.env.example` to `client/.env` (if needed)
+
+5. **Start Development Servers**
+
+   ```bash
+   # Terminal 1: Start server
+   cd server
    npm run dev
 
-   # In the client directory (new terminal)
+   # Terminal 2: Start client
+   cd client
    npm run dev
    ```
-8. Follow the setup instructions in the `Week4-Assignment.md` file
-9. Complete the tasks outlined in the assignment
 
-## Files Included
+6. **Access the application**
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:5000
 
-- `Week4-Assignment.md`: Detailed assignment instructions
-- Starter code for both client and server:
-  - Basic project structure
-  - Configuration files
-  - Sample models and components
+## 🚀 Production Deployment
 
-## Requirements
+### Option 1: Railway (Recommended)
 
-- Node.js (v18 or higher)
-- MongoDB (local installation or Atlas account)
-- npm or yarn
-- Git
+1. **Create Railway Account**
 
-## Submission
+   - Sign up at [railway.app](https://railway.app)
 
-Your work will be automatically submitted when you push to your GitHub Classroom repository. Make sure to:
+2. **Connect Repository**
 
-1. Complete both the client and server portions of the application
-2. Implement all required API endpoints
-3. Create the necessary React components and hooks
-4. Document your API and setup process in the README.md
-5. Include screenshots of your working application
+   - Link your GitHub repository to Railway
+   - Railway will automatically detect the configuration
 
-## Resources
+3. **Database Setup**
 
-- [MongoDB Documentation](https://docs.mongodb.com/)
-- [Express.js Documentation](https://expressjs.com/)
-- [React Documentation](https://react.dev/)
-- [Node.js Documentation](https://nodejs.org/en/docs/)
-- [Mongoose Documentation](https://mongoosejs.com/docs/) 
+   - Railway provides MongoDB automatically
+   - Or connect your MongoDB Atlas database
+
+4. **Environment Variables**
+   Railway will use these environment variables:
+
+   ```
+   DATABASE_URL=<railway-provided-mongodb-url>
+   JWT_SECRET=your-secure-jwt-secret
+   NODE_ENV=production
+   PORT=<railway-provided-port>
+   ```
+
+5. **Deploy**
+   - Push to main branch to trigger automatic deployment
+   - Railway will build and deploy both client and server
+
+### Option 2: Manual Deployment
+
+1. **Build the client**
+
+   ```bash
+   cd client
+   npm run build
+   ```
+
+2. **Deploy server** to your preferred platform (Heroku, DigitalOcean, etc.)
+   ```bash
+   cd server
+   npm start
+   ```
+
+## 📡 API Endpoints
+
+### Posts
+
+- `GET /api/posts` - Get all posts (with pagination, search, filtering)
+- `GET /api/posts/:id` - Get single post
+- `POST /api/posts` - Create post (auth required)
+- `PUT /api/posts/:id` - Update post (auth required)
+- `DELETE /api/posts/:id` - Delete post (auth required)
+- `POST /api/posts/:id/comments` - Add comment to post (auth required)
+
+### Categories
+
+- `GET /api/categories` - Get all categories
+- `POST /api/categories` - Create category (auth required)
+
+### Authentication
+
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+
+## 🔧 Configuration
+
+### Environment Variables
+
+**Server (.env)**
+
+```
+MONGO_URI=mongodb://localhost:27017/mern_blog
+JWT_SECRET=your_jwt_secret_here
+PORT=5000
+NODE_ENV=development
+```
+
+**Client (.env)**
+
+```
+VITE_API_URL=http://localhost:5000/api
+```
+
+## 🎨 UI Components
+
+Built with modern React patterns and shadcn/ui:
+
+- Responsive navigation with mobile menu
+- Theme toggle (dark/light/system)
+- Form validation with React Hook Form
+- Toast notifications
+- Loading states and error handling
+
+## 📱 Features Overview
+
+- **Blog Posts**: Rich text content with featured images
+- **User Management**: Secure authentication system
+- **Content Management**: Full CRUD operations for posts
+- **Image Handling**: Upload and display featured images
+- **Responsive Design**: Works on all device sizes
+- **Modern UX**: Smooth animations and transitions
+
+## 📸 Screenshots
+
+### Homepage with Animated Hero
+
+![Homepage](screenshots/01-homepage.png)
+_Animated hero section with floating elements, gradient text, and blog posts grid_
+
+### Authentication Page
+
+![Authentication](screenshots/02-authentication.png)
+_Modern glassmorphism design with animated backgrounds and smooth transitions_
+
+### Create Post Form
+
+![Create Post](screenshots/03-create-post.png)
+_Comprehensive post creation form with image upload, category selection, and rich text editing_
+
+### Individual Post View
+
+![Post Detail](screenshots/04-post-detail.png)
+_Full post display with featured image, author info, and interactive comments section_
+
+### Search & Filter Functionality
+
+![Search & Filter](screenshots/05-search-filter.png)
+_Advanced search and filtering system with real-time results and multiple sort options_
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+---
+
+**Happy coding! 🎉**

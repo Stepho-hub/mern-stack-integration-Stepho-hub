@@ -1,32 +1,87 @@
 const express = require('express');
 const router = express.Router();
-const { body, validationResult } = require('express-validator');
+const mongoose = require('mongoose');
 const Post = require('../models/Post');
 const auth = require('../middleware/auth');
-const upload = require('../middleware/upload');
+const multer = require('multer');
+const path = require('path');
+const { body, validationResult } = require('express-validator');
+
+// Configure multer for image uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for better compatibility
+  fileFilter: (req, file, cb) => {
+    // Define allowed image MIME types
+    const allowedMimes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/bmp',
+      'image/tiff',
+      'image/svg+xml',
+      'image/x-icon',
+      'image/heic',
+      'image/heif'
+    ];
+
+    // Define allowed file extensions
+    const allowedExtensions = /\.(jpg|jpeg|png|gif|webp|bmp|tiff|tif|svg|ico|heic|heif)$/i;
+
+    // Check MIME type first
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    }
+    // Fallback to file extension check
+    else if (allowedExtensions.test(file.originalname)) {
+      cb(null, true);
+    }
+    else {
+      cb(new Error('Only image files are allowed! Supported formats: JPG, JPEG, PNG, GIF, WebP, BMP, TIFF, SVG, ICO, HEIC, HEIF'), false);
+    }
+  }
+});
 
 // Validation middleware
 const validatePost = [
   body('title')
     .trim()
     .isLength({ min: 1, max: 100 })
-    .withMessage('Title must be between 1 and 100 characters'),
+    .withMessage('Title is required and must be less than 100 characters'),
   body('content')
     .trim()
     .isLength({ min: 1 })
     .withMessage('Content is required'),
-  body('category')
-    .optional()
-    .isMongoId()
-    .withMessage('Invalid category ID'),
   body('excerpt')
     .optional()
     .isLength({ max: 200 })
-    .withMessage('Excerpt cannot exceed 200 characters'),
-  body('featuredImage')
+    .withMessage('Excerpt must be less than 200 characters'),
+  body('category')
+    .isMongoId()
+    .withMessage('Valid category is required'),
+  body('isPublished')
     .optional()
-    .isURL()
-    .withMessage('Featured image must be a valid URL')
+    .isBoolean()
+    .withMessage('isPublished must be a boolean')
+];
+
+const validateComment = [
+  body('content')
+    .trim()
+    .isLength({ min: 1, max: 500 })
+    .withMessage('Comment content is required and must be less than 500 characters')
 ];
 
 // Middleware to handle validation errors
@@ -35,29 +90,27 @@ const handleValidationErrors = (req, res, next) => {
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
-      error: 'Validation failed',
-      details: errors.array()
+      errors: errors.array()
     });
   }
   next();
 };
 
-// Get all posts with pagination and filtering
+// Get all posts with search and filtering
 router.get('/', async (req, res) => {
-  console.log('GET /api/posts - Fetching posts with query:', req.query);
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const category = req.query.category;
-    const search = req.query.search;
+    const { page = 1, limit = 10, category, search, sort = '-createdAt' } = req.query;
+    const skip = (page - 1) * limit;
 
     // Build query
     let query = { isPublished: true };
 
+    // Add category filter
     if (category && category !== 'all') {
       query.category = category;
     }
 
+    // Add search functionality
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
@@ -66,117 +119,113 @@ router.get('/', async (req, res) => {
       ];
     }
 
-    const skip = (page - 1) * limit;
-
     const posts = await Post.find(query)
-      .populate('author', 'name')
-      .populate('category', 'name')
-      .sort({ createdAt: -1 })
+      .populate('author')
+      .populate('category')
+      .sort(sort)
       .skip(skip)
-      .limit(limit);
+      .limit(parseInt(limit));
 
     const total = await Post.countDocuments(query);
 
-    console.log(`Found ${posts.length} posts out of ${total} total`);
-    console.log('Posts data:', posts.map(p => ({ title: p.title, author: p.author?.name })));
-
     res.json({
-      success: true,
-      data: posts,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-        hasNext: page * limit < total,
-        hasPrev: page > 1
-      }
+      posts,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page),
+      total
     });
   } catch (error) {
-    console.error('Error fetching posts:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ message: error.message });
   }
 });
 
-// Get single post
-router.get('/:id', async (req, res) => {
+// Search posts (dedicated endpoint)
+router.get('/search', async (req, res) => {
+  try {
+    const { q: searchQuery, limit = 10 } = req.query;
+
+    if (!searchQuery) {
+      return res.status(400).json({ message: 'Search query is required' });
+    }
+
+    const posts = await Post.find({
+      isPublished: true,
+      $or: [
+        { title: { $regex: searchQuery, $options: 'i' } },
+        { content: { $regex: searchQuery, $options: 'i' } },
+        { excerpt: { $regex: searchQuery, $options: 'i' } }
+      ]
+    })
+      .populate('author')
+      .populate('category')
+      .limit(parseInt(limit));
+
+    res.json(posts);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get single post by ID or slug
+router.get('/:idOrSlug', async (req, res) => {
   try {
     let post;
-
-    // Try to find by ID first
-    if (req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
-      post = await Post.findById(req.params.id).populate('author', 'name').populate('category', 'name');
+    if (mongoose.Types.ObjectId.isValid(req.params.idOrSlug)) {
+      // If it's a valid ObjectId, find by ID
+      post = await Post.findById(req.params.idOrSlug)
+        .populate('author')
+        .populate('category')
+        .populate('comments.user', 'name');
+    } else {
+      // Otherwise, find by slug
+      post = await Post.findOne({ slug: req.params.idOrSlug })
+        .populate('author')
+        .populate('category')
+        .populate('comments.user', 'name');
     }
 
-    // If not found by ID, try to find by slug
-    if (!post) {
-      post = await Post.findOne({ slug: req.params.id }).populate('author', 'name').populate('category', 'name');
-    }
-
-    if (!post) return res.status(404).json({
-      success: false,
-      error: 'Post not found'
-    });
-
-    res.json({
-      success: true,
-      data: post
-    });
+    if (!post) return res.status(404).json({ message: 'Post not found' });
+    res.json(post);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ message: error.message });
   }
 });
 
 // Create post
-router.post('/', auth, validatePost, handleValidationErrors, async (req, res) => {
-  const post = new Post({
-    ...req.body,
-    author: req.user.id,
-  });
+router.post('/', auth, upload.single('featuredImage'), validatePost, handleValidationErrors, async (req, res) => {
   try {
+    const postData = {
+      ...req.body,
+      author: req.user.id,
+    };
+
+    if (req.file) {
+      postData.featuredImage = req.file.filename;
+    }
+
+    const post = new Post(postData);
     const newPost = await post.save();
-    res.status(201).json({
-      success: true,
-      data: newPost
-    });
+    res.status(201).json(newPost);
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      error: error.message
-    });
+    res.status(400).json({ message: error.message });
   }
 });
 
 // Update post
-router.put('/:id', auth, validatePost, handleValidationErrors, async (req, res) => {
+router.put('/:id', auth, upload.single('featuredImage'), validatePost, handleValidationErrors, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({
-      success: false,
-      error: 'Post not found'
-    });
-    if (post.author.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        error: 'Not authorized'
-      });
+    if (!post) return res.status(404).json({ message: 'Post not found' });
+
+    const updateData = { ...req.body };
+    if (req.file) {
+      updateData.featuredImage = req.file.filename;
     }
-    const updatedPost = await Post.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json({
-      success: true,
-      data: updatedPost
-    });
+
+    const updatedPost = await Post.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    res.json(updatedPost);
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      error: error.message
-    });
+    res.status(400).json({ message: error.message });
   }
 });
 
@@ -184,132 +233,35 @@ router.put('/:id', auth, validatePost, handleValidationErrors, async (req, res) 
 router.delete('/:id', auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({
-      success: false,
-      error: 'Post not found'
-    });
-    if (post.author.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        error: 'Not authorized'
-      });
-    }
+    if (!post) return res.status(404).json({ message: 'Post not found' });
     await Post.findByIdAndDelete(req.params.id);
-    res.json({
-      success: true,
-      message: 'Post deleted successfully'
-    });
+    res.json({ message: 'Post deleted' });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ message: error.message });
   }
 });
 
-// Upload image
-router.post('/upload-image', auth, upload.single('image'), (req, res) => {
+// Add comment to post
+router.post('/:id/comments', auth, validateComment, handleValidationErrors, async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        error: 'No image file provided'
-      });
-    }
-
-    // Return the image URL
-    const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-
-    res.json({
-      success: true,
-      data: {
-        url: imageUrl,
-        filename: req.file.filename
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Get comments for a post
-router.get('/:id/comments', async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id).populate('comments.user', 'name');
-    if (!post) return res.status(404).json({
-      success: false,
-      error: 'Post not found'
-    });
-
-    res.json({
-      success: true,
-      data: post.comments
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Add comment to a post
-router.post('/:id/comments', auth, async (req, res) => {
-  try {
-    const { content, name } = req.body;
-
-    if (!content || typeof content !== 'string' || !content.trim()) {
-      return res.status(400).json({
-        success: false,
-        error: 'Comment content is required and must be a string'
-      });
-    }
-
     const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({
-      success: false,
-      error: 'Post not found'
-    });
+    if (!post) return res.status(404).json({ message: 'Post not found' });
 
-    const newComment = {
-      content: content.trim(),
-      createdAt: new Date()
+    const comment = {
+      user: req.user.id,
+      content: req.body.content
     };
 
-    // If user is authenticated, add user, else add name
-    if (req.user) {
-      newComment.user = req.user.id;
-    } else if (name && name.trim()) {
-      newComment.name = name.trim();
-    } else {
-      return res.status(400).json({
-        success: false,
-        error: 'Name is required for anonymous comments'
-      });
-    }
-
-    post.comments.push(newComment);
+    post.comments.push(comment);
     await post.save();
 
-    // Populate the user data for the response if user exists
-    if (newComment.user) {
-      await post.populate('comments.user', 'name');
-    }
+    // Populate the comment with user data
+    await post.populate('comments.user', 'name');
 
-    const addedComment = post.comments[post.comments.length - 1];
-
-    res.status(201).json({
-      success: true,
-      data: addedComment
-    });
+    const newComment = post.comments[post.comments.length - 1];
+    res.status(201).json(newComment);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ message: error.message });
   }
 });
 

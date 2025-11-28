@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import Navigation from '@/components/Navigation';
 import { toast } from 'sonner';
-import { ArrowLeft, Upload, X } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 interface Category {
   _id: string;
@@ -24,17 +24,16 @@ const CreatePost = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     excerpt: '',
     category: '',
-    isPublished: true,
-    featuredImage: ''
+    isPublished: false,
+    featuredImage: null as File | null
   });
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -69,8 +68,11 @@ const CreatePost = () => {
         excerpt: data.excerpt || '',
         category: data.category?._id || '',
         isPublished: data.isPublished,
-        featuredImage: data.featuredImage || ''
+        featuredImage: null
       });
+      setImagePreview(data.featuredImage ? (
+        data.featuredImage.startsWith('http') ? data.featuredImage : `/uploads/${data.featuredImage}`
+      ) : null);
     } catch (error) {
       console.error('Error fetching post:', error);
       toast.error('Failed to load post');
@@ -94,43 +96,49 @@ const CreatePost = () => {
     }));
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
     if (file) {
-      setSelectedFile(file);
-      // Preview the selected file
+      // Validate file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('Image file size must be less than 10MB');
+        e.target.value = '';
+        return;
+      }
+
+      // Validate file type
+      const allowedTypes = [
+        'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+        'image/bmp', 'image/tiff', 'image/svg+xml', 'image/x-icon',
+        'image/heic', 'image/heif'
+      ];
+
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Please select a valid image file (JPG, PNG, GIF, WebP, BMP, TIFF, SVG, ICO, HEIC, HEIF)');
+        e.target.value = '';
+        return;
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        featuredImage: file
+      }));
+
       const reader = new FileReader();
       reader.onload = (e) => {
-        if (e.target?.result) {
-          setFormData(prev => ({ ...prev, featuredImage: e.target!.result as string }));
-        }
+        setImagePreview(e.target?.result as string);
       };
       reader.readAsDataURL(file);
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        featuredImage: null
+      }));
+      setImagePreview(null);
     }
   };
 
-  const handleImageUpload = async () => {
-    if (!selectedFile) return;
-
-    setUploadingImage(true);
-    try {
-      const response = await postService.uploadImage(selectedFile);
-      setFormData(prev => ({ ...prev, featuredImage: response.data.url }));
-      setSelectedFile(null);
-      toast.success('Image uploaded successfully');
-    } catch (error: any) {
-      console.error('Error uploading image:', error);
-      toast.error(error.response?.data?.error || 'Failed to upload image');
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
-  const removeImage = () => {
-    setFormData(prev => ({ ...prev, featuredImage: '' }));
-    setSelectedFile(null);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,24 +162,11 @@ const CreatePost = () => {
         toast.success('Post created successfully');
       }
 
-      // Store the new post in localStorage for optimistic update
-      const newPost = {
-        _id: 'temp-' + Date.now(),
-        title: formData.title,
-        content: formData.content,
-        excerpt: formData.excerpt,
-        category: categories.find(cat => cat._id === formData.category),
-        author: user,
-        featuredImage: formData.featuredImage,
-        createdAt: new Date().toISOString(),
-        isPublished: formData.isPublished
-      };
-      localStorage.setItem('newPost', JSON.stringify(newPost));
-
       navigate('/');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving post:', error);
-      toast.error(error.response?.data?.message || 'Failed to save post');
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to save post');
     } finally {
       setLoading(false);
     }
@@ -249,54 +244,19 @@ const CreatePost = () => {
 
           <div className="space-y-2">
             <Label htmlFor="image">Featured Image</Label>
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <Input
-                  id="image"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="flex-1"
-                />
-                {selectedFile && (
-                  <Button
-                    type="button"
-                    onClick={handleImageUpload}
-                    disabled={uploadingImage}
-                    className="flex items-center gap-2"
-                  >
-                    <Upload className="h-4 w-4" />
-                    {uploadingImage ? 'Uploading...' : 'Upload'}
-                  </Button>
-                )}
-              </div>
-
-              {formData.featuredImage && (
-                <div className="relative inline-block">
-                  <img
-                    src={formData.featuredImage}
-                    alt="Preview"
-                    className="max-w-sm rounded-lg border"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
-                    onClick={removeImage}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
-
-              <Input
-                value={formData.featuredImage}
-                onChange={(e) => setFormData(prev => ({ ...prev, featuredImage: e.target.value }))}
-                placeholder="Or enter image URL directly"
-                className="mt-2"
+            <Input
+              id="image"
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp,image/tiff,image/svg+xml,image/x-icon,image/heic,image/heif"
+              onChange={handleImageChange}
+            />
+            {imagePreview && (
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="mt-2 max-w-sm rounded-lg"
               />
-            </div>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
@@ -305,7 +265,7 @@ const CreatePost = () => {
               checked={formData.isPublished}
               onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isPublished: checked }))}
             />
-            <Label htmlFor="published">Publish post (visible to all users)</Label>
+            <Label htmlFor="published">Publish immediately</Label>
           </div>
 
           <div className="flex gap-4">

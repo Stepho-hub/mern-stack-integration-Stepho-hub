@@ -1,28 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const { body, validationResult } = require('express-validator');
 const Category = require('../models/Category');
+const { body, validationResult } = require('express-validator');
 
-// Validation middleware for categories
+// Validation middleware
 const validateCategory = [
   body('name')
     .trim()
     .isLength({ min: 1, max: 50 })
-    .withMessage('Category name must be between 1 and 50 characters'),
-  body('description')
-    .optional()
-    .isLength({ max: 200 })
-    .withMessage('Description cannot exceed 200 characters')
+    .withMessage('Category name is required and must be less than 50 characters')
 ];
 
-// Middleware to handle validation errors
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
-      error: 'Validation failed',
-      details: errors.array()
+      errors: errors.array()
     });
   }
   next();
@@ -32,15 +26,9 @@ const handleValidationErrors = (req, res, next) => {
 router.get('/', async (req, res) => {
   try {
     const categories = await Category.find();
-    res.json({
-      success: true,
-      data: categories
-    });
+    res.json(categories);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ message: error.message });
   }
 });
 
@@ -49,15 +37,9 @@ router.post('/', validateCategory, handleValidationErrors, async (req, res) => {
   const category = new Category(req.body);
   try {
     const newCategory = await category.save();
-    res.status(201).json({
-      success: true,
-      data: newCategory
-    });
+    res.status(201).json(newCategory);
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      error: error.message
-    });
+    res.status(400).json({ message: error.message });
   }
 });
 

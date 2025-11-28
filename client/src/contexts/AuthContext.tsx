@@ -40,8 +40,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await authService.register({ name, email, password });
       toast.success('Account created successfully!');
       navigate('/auth');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Registration failed');
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Registration failed');
       throw error;
     }
   };
@@ -52,9 +53,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(response.user);
       toast.success('Signed in successfully!');
       window.location.href = '/';
-    } catch (error: any) {
+    } catch (error) {
       console.error('Sign in error:', error);
-      toast.error(error.response?.data?.message || 'Login failed');
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Login failed');
       throw error;
     }
   };

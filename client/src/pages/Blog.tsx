@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { postService, categoryService } from '@/services/api';
-import { usePosts } from '@/hooks/useApi';
+import { postService } from '@/services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Navigation from '@/components/Navigation';
+import Footer from '@/components/Footer';
+import { SearchAndFilter } from '@/components/SearchAndFilter';
 import { format } from 'date-fns';
-import { Search, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, BookOpen, PenTool } from 'lucide-react';
 
 interface Post {
   _id: string;
@@ -26,193 +25,165 @@ interface Post {
   } | null;
 }
 
-interface Category {
-  _id: string;
-  name: string;
-}
-
-interface Pagination {
-  page: number;
-  limit: number;
-  total: number;
-  pages: number;
-  hasNext: boolean;
-  hasPrev: boolean;
-}
-
 const Blog = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [pagination, setPagination] = useState<Pagination | null>(null);
-
-  // Filters
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [sortBy, setSortBy] = useState('-createdAt');
   const [currentPage, setCurrentPage] = useState(1);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  // Use custom hook for posts
-  const { getPosts } = usePosts();
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalPosts, setTotalPosts] = useState(0);
 
   useEffect(() => {
     fetchPosts();
-  }, [currentPage, selectedCategory, searchQuery, refreshTrigger]);
+  }, [searchQuery, selectedCategory, sortBy, currentPage]);
 
   const fetchPosts = async () => {
     try {
-      const response = await getPosts.execute(currentPage, 9, selectedCategory, searchQuery);
-      setPagination(response?.pagination || null);
+      setLoading(true);
+      const data = await postService.getAllPosts(currentPage, 9, selectedCategory, searchQuery, sortBy);
 
-      // Clear optimistic post after real data loads
-      localStorage.removeItem('newPost');
+      if (data.posts) {
+        setPosts(data.posts);
+        setTotalPages(data.totalPages || 1);
+        setTotalPosts(data.total || 0);
+      } else {
+        // Fallback for old API format
+        setPosts(data || []);
+        setTotalPages(1);
+        setTotalPosts(data?.length || 0);
+      }
     } catch (error) {
       console.error('Error fetching posts:', error);
+      setPosts([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchCategories = async () => {
-    try {
-      const data = await categoryService.getAllCategories();
-      setCategories(data || []);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
   };
 
-  const handleRefresh = () => {
-    setRefreshTrigger(prev => prev + 1);
+  const handleCategoryFilter = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    setCurrentPage(1);
   };
 
-  // Get posts including optimistic update
-  const getDisplayPosts = () => {
-    const realPosts = getPosts.data || [];
-    const optimisticPost = localStorage.getItem('newPost');
-
-    if (optimisticPost && currentPage === 1 && !selectedCategory && !searchQuery) {
-      try {
-        const parsedPost = JSON.parse(optimisticPost);
-        // Add optimistic post at the beginning if not already in real posts
-        const exists = realPosts.some((post: any) => post.title === parsedPost.title);
-        if (!exists) {
-          return [parsedPost, ...realPosts];
-        }
-      } catch (error) {
-        console.error('Error parsing optimistic post:', error);
-      }
-    }
-
-    return realPosts;
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCurrentPage(1); // Reset to first page when searching
-    fetchPosts();
+  const handleSort = (sort: string) => {
+    setSortBy(sort);
+    setCurrentPage(1);
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-  };
-
-  const clearFilters = () => {
-    setSearchQuery('');
-    setSelectedCategory('all');
-    setCurrentPage(1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      <main className="container mx-auto px-4 py-12">
-        <div className="mb-12 text-center">
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Blog Posts
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Explore our latest articles and insights
-          </p>
-        </div>
+      <main className="container mx-auto px-4 py-12 relative">
+        {/* Hero Section with Animations */}
+        <div className="mb-12 text-center relative overflow-hidden">
+          {/* Animated Background Elements */}
+          <div className="absolute inset-0 -z-10">
+            <div className="absolute top-10 left-10 w-20 h-20 bg-emerald-400/10 rounded-full animate-float delay-100"></div>
+            <div className="absolute top-20 right-20 w-16 h-16 bg-purple-400/10 rounded-full animate-float delay-300"></div>
+            <div className="absolute bottom-10 left-1/4 w-12 h-12 bg-pink-400/10 rounded-full animate-float delay-500"></div>
+            <div className="absolute bottom-20 right-1/3 w-14 h-14 bg-teal-400/10 rounded-full animate-float delay-700"></div>
 
-        {/* Search and Filter Section */}
-        <div className="mb-8 space-y-4">
-          <div className="flex gap-4 max-w-2xl mx-auto">
-            <form onSubmit={handleSearch} className="flex gap-4 flex-1">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  type="text"
-                  placeholder="Search posts..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category._id} value={category._id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button type="submit" variant="outline">
-                Search
-              </Button>
-              {(searchQuery || selectedCategory !== 'all') && (
-                <Button type="button" variant="ghost" onClick={clearFilters}>
-                  Clear
-                </Button>
-              )}
-            </form>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleRefresh}
-              disabled={getPosts.loading}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${getPosts.loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+            {/* Floating Icons */}
+            <BookOpen className="absolute top-16 left-20 w-8 h-8 text-emerald-400/30 animate-bounce-gentle delay-200" />
+            <PenTool className="absolute top-32 right-32 w-6 h-6 text-purple-400/30 animate-bounce-gentle delay-400" />
+            <Sparkles className="absolute bottom-24 left-16 w-7 h-7 text-pink-400/30 animate-bounce-gentle delay-600" />
+
+            {/* Gradient Orbs */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-emerald-400/15 via-purple-400/10 to-pink-400/15 rounded-full animate-pulse delay-1000"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-teal-400/8 via-purple-400/5 to-emerald-400/8 rounded-full animate-pulse delay-1500"></div>
+          </div>
+
+          {/* Animated Title */}
+          <div className="relative">
+            <h1 className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-emerald-400 via-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient-text">
+              <span className="inline-block animate-slide-in-left">Blog</span>{' '}
+              <span className="inline-block animate-slide-in-right delay-200">Posts</span>
+            </h1>
+
+            {/* Animated Underline */}
+            <div className="mx-auto w-24 h-1 bg-gradient-to-r from-emerald-400 via-purple-400 to-pink-400 rounded-full animate-scale-in delay-500"></div>
+          </div>
+
+          {/* Animated Subtitle */}
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mt-6 animate-fade-in-up delay-700">
+            <span className="inline-block animate-slide-in-left delay-800">Explore</span>{' '}
+            <span className="inline-block animate-slide-in-right delay-900">our</span>{' '}
+            <span className="inline-block animate-slide-in-left delay-1000">latest</span>{' '}
+            <span className="inline-block animate-slide-in-right delay-1100">articles</span>{' '}
+            <span className="inline-block animate-slide-in-left delay-1200">and</span>{' '}
+            <span className="inline-block animate-slide-in-right delay-1300">insights</span>
+          </p>
+
+          {/* Floating Particles */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-20 left-1/4 w-2 h-2 bg-emerald-400/40 rounded-full animate-ping delay-1000"></div>
+            <div className="absolute top-32 right-1/4 w-1 h-1 bg-purple-400/50 rounded-full animate-ping delay-1200"></div>
+            <div className="absolute bottom-16 left-1/3 w-1.5 h-1.5 bg-pink-400/30 rounded-full animate-ping delay-1400"></div>
+            <div className="absolute bottom-24 right-1/5 w-1 h-1 bg-teal-400/45 rounded-full animate-ping delay-1600"></div>
           </div>
         </div>
 
-        {getPosts.loading ? (
-          <div className="text-center text-muted-foreground">Loading posts...</div>
-        ) : (() => {
-          const displayPosts = getDisplayPosts();
-          return displayPosts.length === 0 ? (
-            <div className="text-center text-muted-foreground">
-              {searchQuery || selectedCategory !== 'all'
-                ? 'No posts found matching your criteria.'
-                : 'No posts yet. Be the first to create one!'
-              }
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {displayPosts.map((post: Post) => (
+        {/* Search and Filter */}
+        <div className="mb-8">
+          <SearchAndFilter
+            onSearch={handleSearch}
+            onCategoryFilter={handleCategoryFilter}
+            onSort={handleSort}
+            currentCategory={selectedCategory}
+            currentSort={sortBy}
+          />
+        </div>
+
+        {/* Results Summary */}
+        {!loading && (
+          <div className="mb-6 text-sm text-muted-foreground">
+            {totalPosts > 0 ? (
+              <>
+                Showing {posts.length} of {totalPosts} posts
+                {searchQuery && ` for "${searchQuery}"`}
+                {selectedCategory !== 'all' && ' in selected category'}
+              </>
+            ) : (
+              'No posts found'
+            )}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="text-center text-muted-foreground py-12">Loading posts...</div>
+        ) : posts.length === 0 ? (
+          <div className="text-center text-muted-foreground py-12">
+            {searchQuery || selectedCategory !== 'all' ? 'No posts match your search criteria.' : 'No posts yet. Be the first to create one!'}
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {posts.map((post) => (
                 <Link key={post._id} to={`/post/${post.slug}`}>
-                  <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer flex flex-col">
-                    {post.featuredImage && (
-                      <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-                        <img
-                          src={post.featuredImage}
-                          alt={post.title}
-                          className="w-full h-full object-cover hover:scale-105 transition-transform"
-                        />
-                      </div>
-                    )}
-                    <CardHeader className="flex-shrink-0">
+                  <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="aspect-video w-full overflow-hidden rounded-t-lg border-b border-border">
+                      <img
+                        src={post.featuredImage ? (
+                          post.featuredImage.startsWith('http') ? post.featuredImage : `/uploads/${post.featuredImage}`
+                        ) : '/placeholder.svg'}
+                        alt={post.title}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform"
+                      />
+                    </div>
+                    <CardHeader>
                       <div className="flex items-center gap-2 mb-2">
                         {post.category && (
                           <Badge variant="secondary">{post.category.name}</Badge>
@@ -223,10 +194,10 @@ const Blog = () => {
                       </div>
                       <CardTitle className="line-clamp-2">{post.title}</CardTitle>
                     </CardHeader>
-                    <CardContent className="flex-1 flex flex-col justify-between">
+                    <CardContent>
                       <CardDescription className="line-clamp-3">{post.excerpt}</CardDescription>
                       <p className="text-sm text-muted-foreground mt-4">
-                        By {post.author?.name || 'Anonymous'}
+                        By {post.author.name}
                       </p>
                     </CardContent>
                   </Card>
@@ -235,37 +206,53 @@ const Blog = () => {
             </div>
 
             {/* Pagination */}
-            {pagination && pagination.pages > 1 && (
-              <div className="flex items-center justify-center gap-4">
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={!pagination.hasPrev}
+                  disabled={currentPage === 1}
                 >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  <ChevronLeft className="h-4 w-4" />
                   Previous
                 </Button>
 
-                <span className="text-sm text-muted-foreground">
-                  Page {pagination.page} of {pagination.pages}
-                </span>
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                    if (pageNum > totalPages) return null;
+
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(pageNum)}
+                        className="w-10"
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
 
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={!pagination.hasNext}
+                  disabled={currentPage === totalPages}
                 >
                   Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             )}
           </>
-          );
-        })()}
+        )}
       </main>
+
+      <Footer />
     </div>
   );
 };

@@ -40,9 +40,9 @@ api.interceptors.response.use(
 
 // Post API services
 export const postService = {
-  // Get all posts with optional pagination, filters and search
-  getAllPosts: async (page = 1, limit = 10, category = null, search = null) => {
-    let url = `/posts?page=${page}&limit=${limit}`;
+  // Get all posts with optional pagination, filters, and search
+  getAllPosts: async (page = 1, limit = 10, category = null, search = null, sort = '-createdAt') => {
+    let url = `/posts?page=${page}&limit=${limit}&sort=${sort}`;
     if (category && category !== 'all') {
       url += `&category=${category}`;
     }
@@ -50,28 +50,57 @@ export const postService = {
       url += `&search=${encodeURIComponent(search)}`;
     }
     const response = await api.get(url);
-    return {
-      data: response.data.data || [],
-      pagination: response.data.pagination || null
-    };
+    return response.data;
   },
 
   // Get a single post by ID or slug
   getPost: async (idOrSlug) => {
     const response = await api.get(`/posts/${idOrSlug}`);
-    return response.data.data;
+    return response.data;
   },
 
   // Create a new post
   createPost: async (postData) => {
-    const response = await api.post('/posts', postData);
-    return response.data.data;
+    let data = postData;
+    let config = {};
+
+    if (postData.featuredImage && postData.featuredImage instanceof File) {
+      const formData = new FormData();
+      Object.keys(postData).forEach(key => {
+        if (key === 'featuredImage') {
+          formData.append(key, postData[key]);
+        } else {
+          formData.append(key, postData[key]);
+        }
+      });
+      data = formData;
+      config = { headers: { 'Content-Type': 'multipart/form-data' } };
+    }
+
+    const response = await api.post('/posts', data, config);
+    return response.data;
   },
 
   // Update an existing post
   updatePost: async (id, postData) => {
-    const response = await api.put(`/posts/${id}`, postData);
-    return response.data.data;
+    let data = postData;
+    let config = {};
+
+    if (postData.featuredImage && postData.featuredImage instanceof File) {
+      const formData = new FormData();
+      Object.keys(postData).forEach(key => {
+        if (key === 'featuredImage') {
+          formData.append(key, postData[key]);
+        } else {
+          formData.append(key, postData[key]);
+        }
+      });
+      data = formData;
+      config = { headers: { 'Content-Type': 'multipart/form-data' } };
+    }
+
+    const response = await api.put(`/posts/${id}`, data, config);
+    return response.data;
   },
 
   // Delete a post
@@ -91,31 +120,6 @@ export const postService = {
     const response = await api.get(`/posts/search?q=${query}`);
     return response.data;
   },
-
-  // Upload image
-  uploadImage: async (imageFile) => {
-    const formData = new FormData();
-    formData.append('image', imageFile);
-
-    const response = await api.post('/posts/upload-image', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data.data;
-  },
-
-  // Get comments for a post
-  getComments: async (postId) => {
-    const response = await api.get(`/posts/${postId}/comments`);
-    return response.data.data || [];
-  },
-
-  // Add comment to a post
-  addComment: async (postId, content) => {
-    const response = await api.post(`/posts/${postId}/comments`, { content });
-    return response.data.data;
-  },
 };
 
 // Category API services
@@ -123,13 +127,13 @@ export const categoryService = {
   // Get all categories
   getAllCategories: async () => {
     const response = await api.get('/categories');
-    return response.data.data || [];
+    return response.data;
   },
 
   // Create a new category
   createCategory: async (categoryData) => {
     const response = await api.post('/categories', categoryData);
-    return response.data.data;
+    return response.data;
   },
 };
 
