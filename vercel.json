@@ -22,9 +22,9 @@
   "env": {
     "VITE_API_URL": "@vite_api_url"
   },
-  "functions": {
-    "client/src/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  }
+  // //"functions": {
+  //   "client/src/**/*.js": {
+  //     "runtime": "nodejs18.x"
+  //   }
+  // }//
 }
