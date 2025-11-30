@@ -18,7 +18,23 @@ A full-stack MERN (MongoDB, Express.js, React.js, Node.js) blog application with
 - **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui
 - **Backend**: Node.js, Express.js, MongoDB, Mongoose
 - **Authentication**: JWT (JSON Web Tokens)
-- **Deployment**: Railway, Render, Vercel
+- **Deployment**: Railway (Full-Stack), Render (Backend), Vercel (Frontend)
+
+## 🌐 Live Deployed Application
+
+### **Current Deployment URLs:**
+- **🚂 Railway (Full Application)**: [https://mern-stack-integration-stepho-hub-production.up.railway.app](https://mern-stack-integration-stepho-hub-production.up.railway.app)
+- **⚛️ Vercel (Frontend Only)**: [https://mern-stack-integration-stepho-hub.vercel.app](https://mern-stack-integration-stepho-hub.vercel.app)
+- **🔧 Render (Backend API)**: [https://mern-stack-integration-stepho-hub.onrender.com](https://mern-stack-integration-stepho-hub.onrender.com)
+
+### **Access Your Blog:**
+1. **Main Application**: Use the Railway URL for the complete experience
+2. **Frontend Only**: Use Vercel URL (connects to Render backend)
+3. **API Only**: Use Render URL for API testing
+
+### **Default Login Credentials:**
+- **Email**: admin@blogapp.com
+- **Password**: password123
 
 ## 📁 Project Structure
 
@@ -100,88 +116,96 @@ mern-blog-engine-main/
 
 ## 🚀 Production Deployment
 
-Choose from three deployment platforms:
+This application is deployed across three platforms for optimal performance:
 
-### Option 1: Railway (Full-Stack - Recommended)
+### 🚂 Railway (Full-Stack Application)
+**URL**: [https://mern-stack-integration-stepho-hub-production.up.railway.app](https://mern-stack-integration-stepho-hub-production.up.railway.app)
 
-1. **Create Railway Account**
-   - Sign up at [railway.app](https://railway.app)
+**Features**:
+- Complete MERN application (Frontend + Backend + Database)
+- Automatic deployments from GitHub
+- Built-in MongoDB integration
+- Single URL for entire application
 
-2. **Connect Repository**
-   - Link your GitHub repository to Railway
-   - Railway automatically detects `railway.json` configuration
-
-3. **Environment Variables**
-   Add these in Railway dashboard:
-   ```
-   DATABASE_URL=mongodb+srv://your-mongodb-connection-string
-   JWT_SECRET=your-secure-jwt-secret-here
-   NODE_ENV=production
-   ```
-
-4. **Deploy**
-   - Push to main branch triggers automatic deployment
-   - Railway builds and deploys both frontend and backend
-
-### Option 2: Render (Full-Stack)
-
-1. **Create Render Account**
-   - Sign up at [render.com](https://render.com)
-
-2. **Connect Repository**
-   - Create new "Web Service" from Git
-   - Connect your GitHub repository
-   - Render detects `render.yaml` configuration
-
-3. **Environment Variables**
-   Add these in Render dashboard:
-   ```
-   DATABASE_URL=mongodb+srv://your-mongodb-connection-string
-   JWT_SECRET=your-secure-jwt-secret-here
-   NODE_ENV=production
-   ```
-
-4. **Deploy**
-   - Render automatically builds and deploys
-   - Both frontend and backend served from single service
-
-### Option 3: Vercel + Render (Frontend + Backend)
-
-#### Frontend on Vercel:
-1. **Create Vercel Account**
-   - Sign up at [vercel.com](https://vercel.com)
-
-2. **Connect Repository**
-   - Import your GitHub repository
-   - Vercel detects `vercel.json` configuration
-
-3. **Environment Variables**
-   Add in Vercel dashboard:
-   ```
-   VITE_API_URL=https://your-render-backend-url.onrender.com/api
-   ```
-
-4. **Deploy**
-   - Vercel builds and deploys the React frontend
-   - Automatically connects to your Render backend
-
-#### Backend on Render:
-1. **Deploy backend separately** using Option 2 above
-2. **Note the Render URL** (e.g., `https://your-app.onrender.com`)
-3. **Update Vercel** with the backend URL
-
-### Environment Variables Summary
-
-**Backend (Railway/Render):**
+**Environment Variables**:
 ```
 DATABASE_URL=mongodb+srv://your-mongodb-connection-string
 JWT_SECRET=your-secure-jwt-secret-here
 NODE_ENV=production
 ```
 
-**Frontend (Vercel only):**
+### ⚛️ Vercel (Frontend Only)
+**URL**: [https://mern-stack-integration-stepho-hub.vercel.app](https://mern-stack-integration-stepho-hub.vercel.app)
+
+**Features**:
+- Ultra-fast React frontend deployment
+- Global CDN for instant loading
+- Automatic HTTPS and custom domains
+- Connects to Render backend API
+
+**Environment Variables**:
 ```
-VITE_API_URL=https://your-backend-url/api
+VITE_API_URL=https://mern-stack-integration-stepho-hub.onrender.com/api
+```
+
+### 🔧 Render (Backend API Only)
+**URL**: [https://mern-stack-integration-stepho-hub.onrender.com](https://mern-stack-integration-stepho-hub.onrender.com)
+
+**Features**:
+- Dedicated backend API service
+- RESTful endpoints for all blog operations
+- File upload handling
+- JWT authentication
+
+**Environment Variables**:
+```
+DATABASE_URL=mongodb+srv://your-mongodb-connection-string
+JWT_SECRET=your-secure-jwt-secret-here
+NODE_ENV=production
+```
+
+## 🏗️ Deployment Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Vercel        │    │     Render      │    │    Railway      │
+│   Frontend      │◄──►│   Backend API   │    │ Full Application│
+│                 │    │                 │    │                 │
+│ React + Vite    │    │ Express + Node  │    │ React + Express │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         └───────────────────────┼───────────────────────┘
+                                 │
+                    ┌─────────────────┐
+                    │   MongoDB       │
+                    │   Atlas         │
+                    └─────────────────┘
+```
+
+### **Recommended Usage:**
+- **Railway**: Complete application experience
+- **Vercel + Render**: Best performance (separate concerns)
+- **Development**: Use Railway for full-stack testing
+
+### Environment Variables Summary
+
+**Railway (Full Application):**
+```
+DATABASE_URL=mongodb+srv://your-mongodb-connection-string
+JWT_SECRET=your-secure-jwt-secret-here
+NODE_ENV=production
+```
+
+**Render (Backend Only):**
+```
+DATABASE_URL=mongodb+srv://your-mongodb-connection-string
+JWT_SECRET=your-secure-jwt-secret-here
+NODE_ENV=production
+```
+
+**Vercel (Frontend Only):**
+```
+VITE_API_URL=https://mern-stack-integration-stepho-hub.onrender.com/api
 ```
 
 ### Database Setup
